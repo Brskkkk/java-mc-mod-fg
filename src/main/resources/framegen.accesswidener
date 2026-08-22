@@ -2,3 +2,5 @@ accessWidener v2 named
 
 accessible method net/minecraft/client/Minecraft getFrameTime ()F
 accessible field net/minecraft/client/Minecraft gameRenderer Lnet/minecraft/client/renderer/GameRenderer;
+accessible method net/minecraft/client/Camera setPosition (DDD)V
+accessible method net/minecraft/client/Camera setRotation (FF)V

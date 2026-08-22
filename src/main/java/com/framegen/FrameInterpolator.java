@@ -1,24 +1,21 @@
 package com.framegen;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.Camera;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.phys.Vec3;
-import com.mojang.blaze3d.vertex.PoseStack;
 
 public class FrameInterpolator {
-    private long generatedFrames = 0L;
-    private double lastPlayerX, lastPlayerY, lastPlayerZ;
-    private float lastYaw, lastPitch;
+    private long interpolatedFrames = 0L;
+    private boolean hasSnapshot;
+    private double previousX, previousY, previousZ;
+    private double currentX, currentY, currentZ;
+    private float previousYaw, previousPitch;
+    private float currentYaw, currentPitch;
     private float motionX, motionY, motionZ;
     private float motionYaw, motionPitch;
-    private static final float INTERPOLATION_FACTOR = 0.5f;
-    private int frameCounter = 0;
     private boolean shouldInterpolate = false;
-    
-    // Track camera position for interpolation
-    private double interpCamX, interpCamY, interpCamZ;
-    private float interpYaw, interpPitch;
 
     public void tick() {
         Minecraft client = Minecraft.getInstance();
@@ -26,36 +23,52 @@ public class FrameInterpolator {
 
         LocalPlayer player = client.player;
         Vec3 pos = player.position();
-        
-        // Calculate motion vectors
-        motionX = (float) (pos.x - lastPlayerX);
-        motionY = (float) (pos.y - lastPlayerY);
-        motionZ = (float) (pos.z - lastPlayerZ);
-        motionYaw = player.getYRot() - lastYaw;
-        motionPitch = player.getXRot() - lastPitch;
 
-        lastPlayerX = pos.x;
-        lastPlayerY = pos.y;
-        lastPlayerZ = pos.z;
-        lastYaw = player.getYRot();
-        lastPitch = player.getXRot();
-
-        // Check if motion exists
-        float motionMagnitude = (float) Math.sqrt(motionX*motionX + motionY*motionY + motionZ*motionZ);
-        float rotationMagnitude = (float) Math.sqrt(motionYaw*motionYaw + motionPitch*motionPitch);
-        
-        shouldInterpolate = motionMagnitude > 0.001f || rotationMagnitude > 0.05f;
-        
-        if (shouldInterpolate) {
-            frameCounter++;
-            if (frameCounter > 1) {
-                // Actually render interpolated frame
-                generatedFrames++;
-                frameCounter = 0;
-            }
-        } else {
-            frameCounter = 0;
+        if (!hasSnapshot) {
+            previousX = currentX = pos.x;
+            previousY = currentY = pos.y;
+            previousZ = currentZ = pos.z;
+            previousYaw = currentYaw = player.getYRot();
+            previousPitch = currentPitch = player.getXRot();
+            hasSnapshot = true;
+            return;
         }
+
+        previousX = currentX;
+        previousY = currentY;
+        previousZ = currentZ;
+        previousYaw = currentYaw;
+        previousPitch = currentPitch;
+        currentX = pos.x;
+        currentY = pos.y;
+        currentZ = pos.z;
+        currentYaw = player.getYRot();
+        currentPitch = player.getXRot();
+
+        motionX = (float) (currentX - previousX);
+        motionY = (float) (currentY - previousY);
+        motionZ = (float) (currentZ - previousZ);
+        motionYaw = angleDifference(currentYaw, previousYaw);
+        motionPitch = currentPitch - previousPitch;
+        shouldInterpolate = Math.abs(motionX) > 0.001f
+                || Math.abs(motionY) > 0.001f
+                || Math.abs(motionZ) > 0.001f
+                || Math.abs(motionYaw) > 0.05f
+                || Math.abs(motionPitch) > 0.05f;
+    }
+
+    public void applyCameraInterpolation(Camera camera, float partialTick) {
+        if (!hasSnapshot || !shouldInterpolate || camera.getEntity() != Minecraft.getInstance().player) return;
+
+        float alpha = Math.max(0.0f, Math.min(1.0f, partialTick));
+        camera.setPosition(
+                lerp(previousX, currentX, alpha),
+                lerp(previousY, currentY, alpha),
+                lerp(previousZ, currentZ, alpha));
+        camera.setRotation(
+                interpolateAngle(previousYaw, currentYaw, alpha),
+                lerp(previousPitch, currentPitch, alpha));
+        interpolatedFrames++;
     }
 
     public void renderHUD(GuiGraphics guiGraphics, float tickDeltaTime) {
@@ -67,7 +80,6 @@ public class FrameInterpolator {
         // Get actual FPS from debug info
         int currentFps = client.getFps();
         String fpsString = currentFps + " fps";
-        int estimatedGeneratedFps = (int)(currentFps * (generatedFrames > 0 ? 1 + ((float)generatedFrames / Math.max(1, currentFps)) : 1));
         
         int x = screenWidth - 200;
         int y = 20;
@@ -85,12 +97,11 @@ public class FrameInterpolator {
         guiGraphics.drawString(client.font, actualFpsText, x, y, 0x00FF00);
         
         // Generated frames counter
-        String generatedText = "Generated Frames: " + generatedFrames;
+        String generatedText = "Interpolated Frames: " + interpolatedFrames;
         guiGraphics.drawString(client.font, generatedText, x, y + lineHeight, 0x00FF00);
         
         // Estimated total with frame gen
-        String estimatedText = "Est. with FG: " + estimatedGeneratedFps + " fps";
-        guiGraphics.drawString(client.font, estimatedText, x, y + lineHeight*2, 0xFFFF00);
+        guiGraphics.drawString(client.font, "Camera interpolation: " + (shouldInterpolate ? "ON" : "IDLE"), x, y + lineHeight*2, 0xFFFF00);
         
         // Motion detection
         float motionMag = (float) Math.sqrt(motionX*motionX + motionY*motionY + motionZ*motionZ);
@@ -99,12 +110,24 @@ public class FrameInterpolator {
         guiGraphics.drawString(client.font, motionText, x, y + lineHeight*3, motionColor);
         
         // Status
-        String statusText = shouldInterpolate ? "GENERATING" : "IDLE";
+        String statusText = shouldInterpolate ? "INTERPOLATING" : "IDLE";
         int statusColor = shouldInterpolate ? 0x00FF00 : 0xFF0000;
         guiGraphics.drawString(client.font, statusText, x, y + lineHeight*4, statusColor);
     }
 
-    public long getGeneratedFrames() {
-        return generatedFrames;
+    private static double lerp(double start, double end, float alpha) {
+        return start + (end - start) * alpha;
+    }
+
+    private static float lerp(float start, float end, float alpha) {
+        return start + (end - start) * alpha;
+    }
+
+    private static float interpolateAngle(float start, float end, float alpha) {
+        return start + angleDifference(end, start) * alpha;
+    }
+
+    private static float angleDifference(float end, float start) {
+        return (end - start + 540.0f) % 360.0f - 180.0f;
     }
 }
