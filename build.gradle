@@ -1,0 +1,20 @@
+plugins {
+    id 'java'
+}
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+jar {
+    from sourceSets.main.output
+    manifest {
+        attributes 'Implementation-Version': '1.0.0',
+                   'Implementation-Title': 'FrameGen'
+    }
+}
