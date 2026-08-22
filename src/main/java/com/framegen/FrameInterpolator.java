@@ -71,7 +71,9 @@ public class FrameInterpolator {
         if (!hasSnapshot || !shouldInterpolate || camera.isDetached()
             || camera.getEntity() != Minecraft.getInstance().player) return;
 
-        float alpha = Math.max(0.0f, Math.min(1.0f, partialTick));
+        float flowScale = FrameGenConfig.getFlowScale();
+        float alpha = 0.5f + (partialTick - 0.5f) * flowScale;
+        alpha = Math.max(0.0f, Math.min(1.0f, alpha));
         Vec3 cameraOffset = camera.getPosition().subtract(currentX, currentY, currentZ);
         float cameraYawOffset = angleDifference(camera.getYRot(), currentYaw);
         float cameraPitchOffset = camera.getXRot() - currentPitch;

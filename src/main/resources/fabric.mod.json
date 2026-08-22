@@ -11,6 +11,9 @@
   "entrypoints": {
     "client": [
       "com.framegen.FrameGenMod"
+    ],
+    "modmenu": [
+      "com.framegen.FrameGenModMenu"
     ]
   },
   "mixins": [

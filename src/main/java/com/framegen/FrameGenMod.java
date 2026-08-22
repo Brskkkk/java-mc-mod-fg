@@ -14,6 +14,7 @@ public class FrameGenMod implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        FrameGenConfig.load();
         LOGGER.info("FrameGen mod initialized");
         
         // Hook into render tick
