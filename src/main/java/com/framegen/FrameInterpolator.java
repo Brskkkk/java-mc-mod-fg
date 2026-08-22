@@ -60,14 +60,14 @@ public class FrameInterpolator {
 
     public void renderHUD(GuiGraphics guiGraphics, float tickDeltaTime) {
         Minecraft client = Minecraft.getInstance();
-        if (client.debugScreenActive()) return; // Don't render if F3 is open
-        
+
         int screenWidth = client.getWindow().getGuiScaledWidth();
         int screenHeight = client.getWindow().getGuiScaledHeight();
 
         // Get actual FPS from debug info
-        String fpsString = client.fps + " fps";
-        int estimatedGeneratedFps = (int)(client.fps * (generatedFrames > 0 ? 1 + ((float)generatedFrames / Math.max(1, client.fpsCounter.frames)) : 1));
+        int currentFps = client.getFps();
+        String fpsString = currentFps + " fps";
+        int estimatedGeneratedFps = (int)(currentFps * (generatedFrames > 0 ? 1 + ((float)generatedFrames / Math.max(1, currentFps)) : 1));
         
         int x = screenWidth - 200;
         int y = 20;
