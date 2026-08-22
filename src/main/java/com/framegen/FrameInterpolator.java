@@ -45,6 +45,16 @@ public class FrameInterpolator {
         currentYaw = player.getYRot();
         currentPitch = player.getXRot();
 
+        double distanceSquared = squaredDistance(previousX, previousY, previousZ,
+            currentX, currentY, currentZ);
+        if (distanceSquared > 64.0) {
+            previousX = currentX;
+            previousY = currentY;
+            previousZ = currentZ;
+            previousYaw = currentYaw;
+            previousPitch = currentPitch;
+        }
+
         motionX = (float) (currentX - previousX);
         motionY = (float) (currentY - previousY);
         motionZ = (float) (currentZ - previousZ);
@@ -57,17 +67,21 @@ public class FrameInterpolator {
                 || Math.abs(motionPitch) > 0.05f;
     }
 
-    public void applyCameraInterpolation(Camera camera, float partialTick) {
-        if (!hasSnapshot || !shouldInterpolate || camera.getEntity() != Minecraft.getInstance().player) return;
+    public void applyCameraInterpolation(Camera camera, float partialTick, boolean thirdPerson) {
+        if (!hasSnapshot || !shouldInterpolate || camera.isDetached()
+            || camera.getEntity() != Minecraft.getInstance().player) return;
 
         float alpha = Math.max(0.0f, Math.min(1.0f, partialTick));
+        Vec3 cameraOffset = camera.getPosition().subtract(currentX, currentY, currentZ);
+        float cameraYawOffset = angleDifference(camera.getYRot(), currentYaw);
+        float cameraPitchOffset = camera.getXRot() - currentPitch;
         camera.setPosition(
-                lerp(previousX, currentX, alpha),
-                lerp(previousY, currentY, alpha),
-                lerp(previousZ, currentZ, alpha));
+            lerp(previousX, currentX, alpha) + cameraOffset.x,
+            lerp(previousY, currentY, alpha) + cameraOffset.y,
+            lerp(previousZ, currentZ, alpha) + cameraOffset.z);
         camera.setRotation(
-                interpolateAngle(previousYaw, currentYaw, alpha),
-                lerp(previousPitch, currentPitch, alpha));
+            interpolateAngle(previousYaw, currentYaw, alpha) + cameraYawOffset,
+            lerp(previousPitch, currentPitch, alpha) + cameraPitchOffset);
         interpolatedFrames++;
     }
 
@@ -125,6 +139,14 @@ public class FrameInterpolator {
 
     private static float interpolateAngle(float start, float end, float alpha) {
         return start + angleDifference(end, start) * alpha;
+    }
+
+    private static double squaredDistance(double x1, double y1, double z1,
+                                          double x2, double y2, double z2) {
+        double x = x2 - x1;
+        double y = y2 - y1;
+        double z = z2 - z1;
+        return x * x + y * y + z * z;
     }
 
     private static float angleDifference(float end, float start) {

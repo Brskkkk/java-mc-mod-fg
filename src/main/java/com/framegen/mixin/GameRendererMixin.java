@@ -15,6 +15,6 @@ public class GameRendererMixin {
     private void applyFrameInterpolation(BlockGetter level, Entity entity, boolean detached,
                                          boolean thirdPerson, float partialTick, CallbackInfo ci) {
         FrameGenMod.frameInterpolator.applyCameraInterpolation(
-                (Camera) (Object) this, partialTick);
+                (Camera) (Object) this, partialTick, thirdPerson);
     }
 }
