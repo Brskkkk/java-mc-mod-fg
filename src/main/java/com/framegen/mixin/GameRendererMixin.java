@@ -2,19 +2,23 @@ package com.framegen.mixin;
 
 import com.framegen.FrameGenMod;
 import net.minecraft.client.Camera;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.level.BlockGetter;
+import net.minecraft.client.renderer.GameRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(Camera.class)
+@Mixin(GameRenderer.class)
 public class GameRendererMixin {
-    @Inject(method = "setup", at = @At("RETURN"))
-    private void applyFrameInterpolation(BlockGetter level, Entity entity, boolean detached,
-                                         boolean thirdPerson, float partialTick, CallbackInfo ci) {
+    @Inject(
+            method = "render(FJZ)V",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/Camera;reset()V",
+                    shift = At.Shift.AFTER))
+    private void applyFrameInterpolation(float partialTick, long nanoTime, boolean renderLevel,
+                                         CallbackInfo ci) {
         FrameGenMod.frameInterpolator.applyCameraInterpolation(
-                (Camera) (Object) this, partialTick, thirdPerson);
+                ((GameRenderer) (Object) this).getMainCamera(), partialTick);
     }
 }

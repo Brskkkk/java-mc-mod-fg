@@ -67,7 +67,7 @@ public class FrameInterpolator {
                 || Math.abs(motionPitch) > 0.05f;
     }
 
-    public void applyCameraInterpolation(Camera camera, float partialTick, boolean thirdPerson) {
+    public void applyCameraInterpolation(Camera camera, float partialTick) {
         if (!hasSnapshot || !shouldInterpolate || camera.isDetached()
             || camera.getEntity() != Minecraft.getInstance().player) return;
 
